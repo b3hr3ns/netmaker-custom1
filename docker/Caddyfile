@@ -1,7 +1,7 @@
 # Dashboard
 
 dashboard.nm.ingsoc.xyz {
-    tls /certs/fullchain.pem /certs/dashboard.nm.ingsoc.xyz.key
+    tls /certs/fullchain.pem /certs/dashboard_nm_ingsoc_xyz.key
     reverse_proxy http://netmaker-ui
     header {
 		# Enable cross origin access to *.{$NM_DOMAIN}
@@ -23,13 +23,13 @@ dashboard.nm.ingsoc.xyz {
 
 # API
 api.nm.ingsoc.xyz {
-    tls /certs/fullchain.pem /certs/dashboard.nm.ingsoc.xyz.key
+    tls /certs/fullchain.pem /certs/dashboard_nm_ingsoc_xyz.key
     reverse_proxy http://netmaker:8081
 }
 
 # MQ
 broker.nm.ingsoc.xyz {
-    tls /certs/fullchain.pem /certs/dashboard.nm.ingsoc.xyz.key
+    tls /certs/fullchain.pem /certs/dashboard_nm_ingsoc_xyz.key
 	@ws {
 			header Connection *Upgrade*
 			header Upgrade websocket
