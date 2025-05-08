@@ -1,9 +1,11 @@
 # Dashboard
-https://dashboard.{$NM_DOMAIN} {
-	# Apply basic security headers
-	header {
+
+dashboard.nm.ingsoc.xyz {
+    tls /certs/fullchain.pem /certs/dashboard.nm.ingsoc.xyz.key
+    reverse_proxy http://netmaker-ui
+    header {
 		# Enable cross origin access to *.{$NM_DOMAIN}
-		Access-Control-Allow-Origin *.{$NM_DOMAIN}
+		Access-Control-Allow-Origin *.nm.ingsoc.xyz
 		# Enable HTTP Strict Transport Security (HSTS)
 		Strict-Transport-Security "max-age=31536000;"
 		# Enable cross-site filter (XSS) and tell browser to block detected attacks
@@ -20,12 +22,14 @@ https://dashboard.{$NM_DOMAIN} {
 }
 
 # API
-https://api.{$NM_DOMAIN} {
-	reverse_proxy http://netmaker:8081
+api.nm.ingsoc.xyz {
+    tls /certs/fullchain.pem /certs/dashboard.nm.ingsoc.xyz.key
+    reverse_proxy http://netmaker:8081
 }
 
 # MQ
-broker.{$NM_DOMAIN} {
+broker.nm.ingsoc.xyz {
+    tls /certs/fullchain.pem /certs/dashboard.nm.ingsoc.xyz.key
 	@ws {
 			header Connection *Upgrade*
 			header Upgrade websocket
