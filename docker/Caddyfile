@@ -2,7 +2,7 @@
 
 dashboard.nm.ingsoc.xyz {
     tls /certs/fullchain.pem /certs/dashboard_nm_ingsoc_xyz.key
-    reverse_proxy http://netmaker-ui
+
     header {
 		# Enable cross origin access to *.{$NM_DOMAIN}
 		Access-Control-Allow-Origin *.nm.ingsoc.xyz
