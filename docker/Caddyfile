@@ -3,6 +3,11 @@
 dashboard.nm.ingsoc.xyz {
     tls /certs/fullchain.pem /certs/dashboard_nm_ingsoc_xyz.key
 
+    log {
+        output file /data/caddy/logs/dashboard.log
+        format single_field common_log
+    }
+
     header {
 		# Enable cross origin access to *.{$NM_DOMAIN}
 		Access-Control-Allow-Origin *.nm.ingsoc.xyz
@@ -25,11 +30,19 @@ dashboard.nm.ingsoc.xyz {
 api.nm.ingsoc.xyz {
     tls /certs/fullchain.pem /certs/dashboard_nm_ingsoc_xyz.key
     reverse_proxy http://netmaker:8081
+    log {
+        output file /data/caddy/logs/api.log
+        format single_field common_log
+    }
 }
 
 # MQ
 broker.nm.ingsoc.xyz {
     tls /certs/fullchain.pem /certs/dashboard_nm_ingsoc_xyz.key
+    log {
+        output file /data/caddy/logs/broker.log
+        format single_field common_log
+    }
 	@ws {
 			header Connection *Upgrade*
 			header Upgrade websocket
