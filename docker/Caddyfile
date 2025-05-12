@@ -5,7 +5,7 @@ dashboard.nm.ingsoc.xyz {
 
     log {
         output file /data/caddy/logs/dashboard.log
-        format single_field common_log
+        format json
     }
 
     header {
@@ -32,7 +32,7 @@ api.nm.ingsoc.xyz {
     reverse_proxy http://netmaker:8081
     log {
         output file /data/caddy/logs/api.log
-        format single_field common_log
+        format json
     }
 }
 
@@ -41,7 +41,7 @@ broker.nm.ingsoc.xyz {
     tls /certs/fullchain.pem /certs/dashboard_nm_ingsoc_xyz.key
     log {
         output file /data/caddy/logs/broker.log
-        format single_field common_log
+        format json
     }
 	@ws {
 			header Connection *Upgrade*
