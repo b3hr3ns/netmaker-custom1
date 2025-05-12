@@ -26,7 +26,7 @@ services:
 
   netmaker-ui:
     container_name: netmaker-ui
-    image: gravitl/netmaker-ui:0.21.1
+    image: gravitl/netmaker-ui:v0.21.1
     env_file: ./netmaker.env
     environment:
       # config-dependant vars
