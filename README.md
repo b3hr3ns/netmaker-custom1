@@ -38,6 +38,237 @@
   </a> 
 </p>
 
+
+#be sure to create jail.local in fail2ban, install xcaddy, and use transform encoder, check log file paths
+xcaddy build --with github.com/caddyserver/transform-encoder
+chmod +x ./caddy
+mv ./caddy /usr/bin/caddy  # or package it in a Dockerfile
+Custom Caddy docker
+FROM caddy:builder AS builder
+RUN xcaddy build --with github.com/caddyserver/transform-encoder
+
+FROM alpine:3.18
+RUN apk add --no-cache ca-certificates
+COPY --from=builder /usr/bin/caddy /usr/bin/caddy
+RUN chmod +x /usr/bin/caddy
+ENTRYPOINT ["/usr/bin/caddy"]
+docker build -f Dockerfile.custom-caddy -t caddy:custom .
+
+api.nm.ingsoc.xyz {
+  tls /certs/fullchain.pem /certs/dashboard_nm_ingsoc_xyz.key
+
+  log {
+    format transform "{common_log}"
+    output file /root/data/logs/access.log {
+      roll_size 5MiB
+      roll_keep 10
+      roll_keep_for 336h
+    }
+  }
+
+  handle /api/* {
+    reverse_proxy netmaker:8081 {
+      header_up X-Real-IP {remote_host}
+    }
+  }
+
+  handle {
+    respond "404 Not Found" 404
+  }
+}
+
+[Definition]
+failregex = ^<HOST> - - \[.*\] "POST /api/users/adm/authenticate HTTP/2\.0" 401 \d+$
+ignoreregex =
+
+[netmaker-api]
+enabled = true
+port = http,https
+filter = netmaker-api
+logpath = /root/data/logs/access.log
+maxretry = 3
+findtime = 600
+bantime = 3600
+backend = auto
+
+sudo systemctl restart fail2ban
+sudo fail2ban-client status netmaker-api
+
+for i in {1..6}; do
+  curl -k -X POST https://api.nm.ingsoc.xyz/api/users/adm/authenticate \
+       -H "Content-Type: application/json" \
+       -d '{"username":"fake@user.com","password":"wrong"}'
+  sleep 1
+done
+
+sudo fail2ban-client status netmaker-api
+
+
+=========================================================================
+
+sudo fail2ban-client status netmaker-api
+
+fail2ban-regex /var/log/caddy/access.log /etc/fail2ban/filter.d/netmaker-api.conf
+
+docker restart caddy
+docker logs -f caddy
+
+docker exec -it caddy tail -n 5 /root/data/logs/access.log
+
+docker exec -it caddy caddy adapt --config /etc/caddy/Caddyfile --pretty
+
+
+cat /etc/fail2ban/filter.d/netmaker-api.conf
+cat /etc/fail2ban/jail.d/netmaker-api.local
+cat /root/Caddyfile
+
+/root/data/logs/access.log 
+cat /var/log/netmaker-fail2ban.log
+cat /usr/local/bin/netmaker-logfilter.sh
+cat /var/log/netmaker-filter-debug.log
+
+hexdump -C /etc/fail2ban/filter.d/netmaker-api.conf
+printf '[Definition]\nfailregex = ^<HOST> - \\[[^]]+\\] "POST /api/users/adm/authenticate" 401$\n' > /etc/fail2ban/filter.d/netmaker-api.conf
+echo -e '[Definition]\nfailregex = ^<HOST> - \\[[^\\]]+\\] "POST /api/users/adm/authenticate" 401$' > /etc/fail2ban/filter.d/netmaker-api.conf
+cat -A /etc/fail2ban/filter.d/netmaker-api.conf
+od -c /etc/fail2ban/filter.d/netmaker-api.conf | grep 'POST'
+docker exec -it caddy wget -qO- http://netmaker:8081/api/auth/login
+
+
+docker logs -f caddy
+
+docker inspect caddy | grep -A 10 Mounts
+
+tail -n 20 /var/lib/docker/volumes/root_caddy_data/_data/caddy/logs/api.log
+
+docker exec -it caddy tail -n 5 /root/data/logs/access.log
+
+
+jq -r 'select(.status == 401) | "\(.request.remote_ip) - - [\(.ts | strftime("%d/%b/%Y:%H:%M:%S %z"))] \"POST \(.request.uri)\" 401"' /root/data/logs/access.log > /var/log/netmaker/converted-access.log
+
+
+for i in {1..6}; do   curl -k -X POST https://api.nm.ingsoc.xyz/api/auth/login     -H "Content-Type: application/json"     -d '{"username":"fakeuser","password":"wrong"}'; done
+
+
+curl -k -X POST https://api.nm.ingsoc.xyz/api/users/adm/authenticate   -H "Content-Type: application/json"   -d '{"username":"no@no.com","password":"wrong"}'
+
+
+root@ubnmCA020a01:~# sudo jq -r '
+>   select(.status == 401) |
+>   "\(.request.remote_ip) - - [\(.ts | floor | strftime(\"%d/%b/%Y:%H:%M:%S\"))] \"POST \(.request.uri)\" 401"
+> ' /root/data/logs/access.log
+jq: error: syntax error, unexpected INVALID_CHARACTER (Unix shell quoting issues?) at <top-level>, line 3:
+  "\(.request.remote_ip) - - [\(.ts | floor | strftime(\"%d/%b/%Y:%H:%M:%S\"))] \"POST \(.request.uri)\" 401"                                                       
+jq: 1 compile error
+
+
+
+Caddyfile
+
+# API
+api.nm.ingsoc.xyz {
+  tls /certs/fullchain.pem /certs/dashboard_nm_ingsoc_xyz.key
+
+  log {
+    output file /data/logs/access.log {
+      roll_size 5MiB
+      roll_keep 10
+      roll_keep_for 336h
+    }
+    format json
+  }
+
+  handle /api/* {
+    reverse_proxy netmaker:8081 {
+      header_up X-Real-IP {remote_host}
+    }
+  }
+
+  handle {
+    respond "404 Not Found" 404
+  }
+}
+
+
+
+keygen process
+ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+scp ~/.ssh/id_rsa youruser@windows_machine:/path/to/save/
+ssh-keygen -p -m PEM -f ~/.ssh/id_rsa
+mkdir -p ~/.ssh
+chmod 700 ~/.ssh
+echo "PASTE_PUBLIC_KEY_HERE" >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+openssl req -new -newkey rsa:2048 -nodes -keyout nm.ingsoc.xyz.key -out nm.ingsoc.xyz.csr
+sudo mkdir -p /etc/ssl/nm.ingsoc.xyz
+sudo cp nm.ingsoc.xyz.key wildcard_nm_ingsoc_xyz.crt ca_bundle.crt /etc/ssl/nm.ingsoc.xyz/
+cat wildcard_nm_ingsoc_xyz.crt ca_bundle.crt > fullchain.pem
+
+server {
+    listen 443 ssl;
+    server_name dashboard.nm.ingsoc.xyz api.nm.ingsoc.xyz broker.nm.ingsoc.xyz;
+
+    ssl_certificate /etc/ssl/nm.ingsoc.xyz/fullchain.pem;
+    ssl_certificate_key /etc/ssl/nm.ingsoc.xyz/nm.ingsoc.xyz.key;
+
+    # Your proxy / app settings here
+}
+
+sudo systemctl reload nginx
+
+openssl s_client -connect dashboard.nm.ingsoc.xyz:443
+
+dig CNAME _a1b2c3d4e5.dashboard.nm.ingsoc.xyz +short
+
+sudo mkdir -p /opt/netmaker/certs
+sudo cp your_domain.crt /opt/netmaker/certs/fullchain.pem
+sudo cp ca_bundle.crt /opt/netmaker/certs/ca.pem
+sudo cp private.key /opt/netmaker/certs/privkey.pem
+
+cat your_domain.crt ca_bundle.crt > /opt/netmaker/certs/fullchain.pem
+
+dashboard.nm.ingsoc.xyz, api.nm.ingsoc.xyz, broker.nm.ingsoc.xyz {
+    tls /certs/fullchain.pem /certs/privkey.pem
+    reverse_proxy localhost:8080  # Or whatever Netmaker uses
+}
+
+
+services:
+  caddy:
+    image: caddy:latest
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - /opt/netmaker/certs:/certs:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    restart: unless-stopped
+
+openssl s_client -connect dashboard.nm.ingsoc.xyz:443
+
+cd /opt/netmaker/certs
+
+# Create fullchain.pem for Caddy
+cat dashboard_nm_ingsoc_xyz.crt dashboard_nm_ingsoc_xyz.ca-bundle > fullchain.pem
+mv dashboard_nm_ingsoc_xyz.crt privkey.pem  # If you generated privkey earlier
+
+
+4. Run Your Modified Installer
+bash
+Copy
+Edit
+sudo ./nm-quick.sh
+
+
+local COMPOSE_URL="https://raw.githubusercontent.com/youruser/yourrepo/main/docker-compose.yml"
+local CADDY_URL="https://raw.githubusercontent.com/youruser/yourrepo/main/Caddyfile"
+
+=========================================================================
+
+
+
+
+
 # WireGuard<sup>®</sup> automation from homelab to enterprise
 
 | Create                                    | Manage                                  | Automate                                |
