@@ -1,3 +1,4 @@
+version: "3.3"
 services:
 
   netmaker:
@@ -23,15 +24,19 @@ services:
       - COREDNS_ADDR=${SERVER_HOST}
       # Overrides SERVER_HOST if set. Useful for making HTTP available via different interfaces/networks.
       - SERVER_HTTP_HOST=api.${NM_DOMAIN}
+    ports:
+      - "8081:8081"
+      - "51822:51822/udp"
+      - "443:443/udp"
 
   netmaker-ui:
     container_name: netmaker-ui
-    image: gravitl/netmaker-ui:v0.21.1
+    image: gravitl/netmaker-ui:v0.90.0
     env_file: ./netmaker.env
     environment:
       # config-dependant vars
       # URL where UI will send API requests. Change based on SERVER_HOST, SERVER_HTTP_HOST, and API_PORT
-      BACKEND_URL: "https://api.${NM_DOMAIN}"
+      BACKEND_URL: "https://api.nm.ingsoc.xyz"
     depends_on:
       - netmaker
     links:
@@ -39,7 +44,7 @@ services:
     restart: always
 
   caddy:
-    image: caddy:2.8.4
+    image: caddy:custom
     container_name: caddy
     env_file: ./netmaker.env
     restart: unless-stopped
@@ -50,6 +55,8 @@ services:
       - caddy_data:/data
       - caddy_conf:/config
       - /opt/netmaker/certs:/certs:ro
+      - ./data/logs:/data/logs
+
     ports:
       - "80:80/tcp"
       - "443:443/tcp"
@@ -85,4 +92,3 @@ volumes:
   dnsconfig: { } # storage for coredns
   mosquitto_logs: { } # storage for mqtt logs
   mosquitto_data: { } # storage for mqtt data
-
